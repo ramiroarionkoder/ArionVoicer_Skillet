@@ -12,6 +12,7 @@ from botocore.exceptions import NoCredentialsError
 class VoiceRecognitionApp:
     """
     A class to represent a voice recognition application using Vosk and AWS Polly.
+    Added this to validate resume
     """
 
     def __init__(self):
@@ -38,7 +39,7 @@ class VoiceRecognitionApp:
 
         # Load the default names
         self.grammar = self.es_names
-       
+
         self.sample_rate = 16000
 
     @staticmethod
@@ -83,7 +84,7 @@ class VoiceRecognitionApp:
         Args:
             sample_rate (int): Sample rate for audio recording
             block_size (int): Block size for audio processing
-       
+
         Returns:
             str: Recognized text from the speech.
         """
@@ -111,7 +112,7 @@ class VoiceRecognitionApp:
                     message_placeholder.empty()
                     result = json.loads(rec.Result())
                     return result.get("text", "")
-       
+
     def synthesize_speech(self, text, slow=False) -> bytes:
         """
         Synthesize speech using AWS Polly.
@@ -168,7 +169,7 @@ class VoiceRecognitionApp:
     def update_grammar(self, new_text):
         """
         Update the grammar file with new text for model improvement.
-        
+
         Args:
             new_text (str): New text to add to the grammar
         """
@@ -178,16 +179,16 @@ class VoiceRecognitionApp:
             grammar_file = "models/it_names.txt"
         else:
             grammar_file = "models/br_names.txt"
-            
+
         # Read existing grammar
         with open(grammar_file, 'r') as file:
             existing_words = set(file.read().splitlines())
-        
+
         # Add new text if it's not already present
         if new_text.strip().lower() not in {word.lower() for word in existing_words}:
             with open(grammar_file, 'a') as file:
                 file.write(f"\n{new_text.strip()}")
-            
+
             # Reload grammar
             if self.language_choice == "es-ES":
                 self.grammar = self.load_grammar("models/es_names.txt")
@@ -204,11 +205,11 @@ class VoiceRecognitionApp:
         """
         # First, store any values we need to preserve
         language_choice = getattr(st.session_state, 'language_choice', 'es-ES')
-        
+
         # Clear all session state
         for key in list(st.session_state.keys()):
             del st.session_state[key]
-            
+
         # Restore preserved values and set initial states
         st.session_state.language_choice = language_choice
         st.session_state.current_cycle = 0
@@ -222,7 +223,7 @@ class VoiceRecognitionApp:
         """
         st.title("ArionVoicer - Special Voice Recognition")
         st.write("Recognizing names accurately, even with accents!")
-             
+
         # Initialize session states if not exists
         if 'current_cycle' not in st.session_state:
             st.session_state.current_cycle = 0
@@ -235,12 +236,12 @@ class VoiceRecognitionApp:
 
         self.language_choice = st.selectbox("Select language model", ["es-ES", "pt-BR", "it-IT"], index=0)
         st.session_state.language_choice = self.language_choice
-        
+
         speak_slower_msg = """
-            **Try one of the following options:**  
-            1. Speak more slowly  
-            2. Say the last name in the context of a sentence, for example: *'I was playing with {Name LastName}'* 
-            3. Change the base language according to the origin of the last name  
+            **Try one of the following options:**
+            1. Speak more slowly
+            2. Say the last name in the context of a sentence, for example: *'I was playing with {Name LastName}'*
+            3. Change the base language according to the origin of the last name
             """
 
         if self.language_choice == "pt-BR" and self.model != self.br_model:
@@ -252,7 +253,7 @@ class VoiceRecognitionApp:
         elif self.language_choice == "it-IT" and self.model != self.it_model:
             self.model = self.it_model
             self.grammar = self.it_names
-        
+
         # Define recognition cycles with different parameters
         recognition_cycles = [
             {"sample_rate": 16000, "block_size": 2048},
@@ -264,41 +265,41 @@ class VoiceRecognitionApp:
         col1, col2 = st.columns(2)
         start_recognition = col1.button("Start Recognition", key=f"start_{st.session_state.current_cycle}")
         reset_recognition = col2.button("Reset Recognition", key="reset")
-        
+
         if reset_recognition:
             self.reset_session()
-        
+
         if start_recognition:
             st.session_state.recognition_active = True
             st.session_state.show_manual_input = False
             st.session_state.current_cycle = 0
             st.rerun()
-           
+
         if st.session_state.show_manual_input:
             # Manual input after all attempts failed
             st.error("Voice recognition was not successful after 3 attempts.")
             st.warning("Please enter your last name manually below:")
-            
+
             # Create columns for better layout
             col1, col2 = st.columns([3, 1])
             with col1:
                 manual_text = st.text_input("Enter the correct last name (SMS):", key="manual_input")
             with col2:
                 submit_button = st.button("Submit", key="submit_manual")
-            
+
             if submit_button and manual_text:
                 st.success(f"Last Name recorded: {manual_text}")
-                
+
                 # Update grammar with the new text
                 if self.update_grammar(manual_text):
                     st.info("Model grammar has been updated with the new name to improve future recognition.")
-                               
+
                 # Reset session and refresh page
                 self.reset_session()
-               
+
         elif st.session_state.recognition_active:
             current_cycle = st.session_state.current_cycle
-            
+
             if current_cycle < len(recognition_cycles):
                 params = recognition_cycles[current_cycle]
 
@@ -316,7 +317,7 @@ class VoiceRecognitionApp:
                     sample_rate=params["sample_rate"],
                     block_size=params["block_size"]
                 )
-                
+
                 # Take last words of text to be the last name
                 words = recognized_text.split()
                 last_name = " ".join(words[-1:]) if len(words) >= 1 else recognized_text
@@ -329,7 +330,7 @@ Parameters Used:
     - Sample Rate: {params['sample_rate']} Hz
     - Block Size: {params['block_size']}
     - Recognition Cycle: {current_cycle + 1} of {len(recognition_cycles)}""")
-                                
+
                 # Confirmation buttons
                 col1, col2 = st.columns(2)
                 with col1:
@@ -346,7 +347,7 @@ Parameters Used:
                             # Move to next cycle
                             st.session_state.current_cycle += 1
                             # st.rerun()
-                        
+
 if __name__ == "__main__":
     app = VoiceRecognitionApp()
     app.run()
