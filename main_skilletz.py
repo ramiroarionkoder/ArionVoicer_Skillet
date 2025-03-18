@@ -12,7 +12,7 @@ from botocore.exceptions import NoCredentialsError
 class VoiceRecognitionApp:
     """
     A class to represent a voice recognition application using Vosk and AWS Polly.
-    Added this to validate resume
+    remove code
     """
 
     def __init__(self):
